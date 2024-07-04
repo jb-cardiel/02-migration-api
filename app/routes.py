@@ -117,7 +117,7 @@ def departments_above_mean():
     
     # Convert to a list of dictionaries for DataFrame creation
     rows = [
-        {"department_id": dept_id, "department_name": dept_name, "hires": hires}
+        {"department_id": dept_id, "department_name": dept_name, "hired": hires}
         for dept_id, dept_name, hires in results
     ]
     
