@@ -6,18 +6,15 @@ import pandas as pd
 from sqlalchemy import func
 from io import StringIO
 
-def bulk_insert_hired_employees(data):
-    db.session.bulk_insert_mappings(HiredEmployees, data)
-    db.session.commit()
+MODELS = {
+        'hired_employees': HiredEmployees,
+        'departments': Departments,
+        'jobs': Jobs
+        }
 
 # Bulk insert function
-def bulk_insert_departments(data):
-    db.session.bulk_insert_mappings(Departments, data)
-    db.session.commit()
-
-# Bulk insert function
-def bulk_insert_jobs(data):
-    db.session.bulk_insert_mappings(Jobs, data)
+def bulk_insert(table, data):
+    db.session.bulk_insert_mappings(table, data)
     db.session.commit()
 
 @app.route('/upload', methods=['POST'])
@@ -31,26 +28,63 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
-    if file:
-        data = pd.read_csv(file, header=None)
-        if table == 'hired_employees':
-            data.columns = HiredEmployees.__table__.columns.keys()
+    try:
+        if file:
+            data = pd.read_csv(file, header=None)
+            
+            data.columns = MODELS[table].__table__.columns.keys()
 
-            # Input datetime in case value is missing and convert to datetime
-            data['datetime'].fillna('2000-01-01T00:00:00Z', inplace=True)
-            data["datetime"] = pd.to_datetime(data["datetime"])
+            if table == 'hired_employees':
 
-            bulk_insert_hired_employees(data.to_dict(orient='records'))
-        elif table == 'departments':
-            data.columns = Departments.__table__.columns.keys()
-            bulk_insert_departments(data.to_dict(orient='records'))
-        elif table == 'jobs':
-            data.columns = Jobs.__table__.columns.keys()
-            bulk_insert_jobs(data.to_dict(orient='records'))
+                # Input datetime in case value is missing and convert to datetime
+                data['datetime'].fillna('2000-01-01T00:00:00Z', inplace=True)
+                data["datetime"] = pd.to_datetime(data["datetime"])
+
+            bulk_insert(MODELS[table], data.to_dict(orient='records'))
         else:
             return jsonify({'error': 'Invalid file type'}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-        return jsonify({'message': 'Data uploaded successfully'}), 201
+    return jsonify({'message': 'Data uploaded successfully'}), 201
+
+@app.route('/upload_files', methods=['POST'])
+def upload_files():
+    if 'hired_employees' not in request.files:
+        return jsonify({'error': 'File for hired employees is required'}), 400
+
+    if 'departments' not in request.files:
+        return jsonify({'error': 'File for departments is required'}), 400
+
+    if 'jobs' not in request.files:
+        return jsonify({'error': 'File for jobs is required'}), 400
+
+    files = {
+        'hired_employees': request.files['hired_employees'],
+        'departments': request.files['departments'],
+        'jobs': request.files['jobs']
+        }
+
+    for label, file_ in files.items():
+        if file_.filename == '':
+            return jsonify({'error': f'No selected file for {label} data'}), 400
+
+    try:
+        for label, file_ in files.items():
+            data = pd.read_csv(file_, header=None)
+            data.columns = MODELS[label].__table__.columns.keys()
+            
+            if label == "hired_employees":
+                # Input datetime in case value is missing and convert to datetime
+                data['datetime'].fillna('2000-01-01T00:00:00Z', inplace=True)
+                data["datetime"] = pd.to_datetime(data["datetime"])
+
+            bulk_insert(MODELS[label], data.to_dict(orient='records'))
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({'message': 'Data uploaded successfully'}), 201
 
 @app.route('/hired_per_quarter', methods=['GET'])
 def hired_per_quarter():
