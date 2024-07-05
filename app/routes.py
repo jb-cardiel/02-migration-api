@@ -19,6 +19,7 @@ def bulk_insert(table, data):
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    """Upload CSV file to a specific table"""
     if 'file' not in request.files or 'table' not in request.form:
         return jsonify({'error': 'File and table are required'}), 400
 
@@ -50,6 +51,7 @@ def upload_file():
 
 @app.route('/upload_files', methods=['POST'])
 def upload_files():
+    """Upload employees, departments and jobs files to tables at once"""
     if 'hired_employees' not in request.files:
         return jsonify({'error': 'File for hired employees is required'}), 400
 
@@ -88,6 +90,7 @@ def upload_files():
 
 @app.route('/hired_per_quarter', methods=['GET'])
 def hired_per_quarter():
+    """Get number of employees hired in 2021 per quarter"""
     employees_2021 = db.session.query(
         Departments.department, Jobs.job, HiredEmployees.datetime
     ).join(Departments, HiredEmployees.department_id == Departments.id)\
@@ -128,6 +131,7 @@ def hired_per_quarter():
 
 @app.route('/departments_above_mean', methods=['GET'])
 def departments_above_mean():
+    """Get departments that hired more employees than the mean in 2021"""
     # Subquery for 2021 data to get mean hires value
     subquery = db.session.query(
         HiredEmployees.department_id,
